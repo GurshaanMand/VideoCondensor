@@ -1,7 +1,5 @@
+# macOS
 .DS_Store
-__pycache__/
-*.pyc
 
-# ignore anything outside repo that was previously tracked
-../notes/
-../.DS_Store
+# Ignore notes if accidentally added in future
+notes/
