@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Watch and download your condensed video." />
+    <meta name="theme-color" content="#170707" />
+    <title>Condensed Video · Video Condenser</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%229%22 fill=%22%23c9a453%22/><path d=%22M9 9h14v4H9zm3 6h8v4h-8zm3 6h2v3h-2z%22 fill=%22%23441811%22/></svg>" />
+    <link rel="stylesheet" href="styles.css?v=20260813-4" />
+  </head>
+  <body>
+    <canvas class="ambient-canvas" id="ambient-canvas" aria-hidden="true"></canvas>
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="title-banner" aria-labelledby="page-title">
+      <div class="conveyor" aria-hidden="true">
+        <div class="conveyor-track">
+          <div class="conveyor-group">
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+          </div>
+          <div class="conveyor-group">
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+          </div>
+        </div>
+      </div>
+      <div class="banner-shade" aria-hidden="true"></div>
+      <h1 id="page-title">Video Condenser</h1>
+    </header>
+
+    <main class="result-page">
+      <section class="result-stage" aria-labelledby="result-title">
+        <a class="back-link" href="index.html"><span aria-hidden="true">&#8592;</span> Back</a>
+        <h2 id="result-title">Condensed Video</h2>
+
+        <div class="video-frame" id="video-frame">
+          <video id="result-video" controls playsinline preload="metadata"></video>
+          <p class="video-state" id="video-state">Loading your condensed video…</p>
+        </div>
+
+        <a class="download-button" id="download-link" href="#" download="condensed-video.mp4" hidden>
+          <span>Download Video</span>
+          <span aria-hidden="true">&#8595;</span>
+        </a>
+      </section>
+    </main>
+
+    <script src="ambient.js?v=20260813-5"></script>
+    <script src="config.js?v=20260813-4"></script>
+    <script type="module" src="result.js?v=20260813-4"></script>
+  </body>
+</html>

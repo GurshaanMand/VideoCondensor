@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Turn long YouTube videos into focused cuts built around your objective." />
+    <meta name="theme-color" content="#170707" />
+    <title>Video Condenser</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%229%22 fill=%22%23c9a453%22/><path d=%22M9 9h14v4H9zm3 6h8v4h-8zm3 6h2v3h-2z%22 fill=%22%23441811%22/></svg>" />
+    <link rel="stylesheet" href="styles.css?v=20260813-4" />
+  </head>
+  <body>
+    <canvas class="ambient-canvas" id="ambient-canvas" aria-hidden="true"></canvas>
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="title-banner" aria-labelledby="page-title">
+      <div class="conveyor" aria-hidden="true">
+        <div class="conveyor-track">
+          <div class="conveyor-group">
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+          </div>
+          <div class="conveyor-group">
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+            <img src="assets/condenser-workflow.png?v=20260813-2" alt="" />
+          </div>
+        </div>
+      </div>
+      <div class="banner-shade" aria-hidden="true"></div>
+      <h1 id="page-title">Video Condenser</h1>
+    </header>
+
+    <main class="create-page">
+      <section class="condense-card" aria-label="Video condensation form">
+        <form id="condense-form" novalidate>
+          <div class="field-group">
+            <label for="video-url">YouTube URL</label>
+            <div class="input-shell">
+              <span class="play-symbol" aria-hidden="true">&#9654;</span>
+              <input id="video-url" name="url" type="url" inputmode="url" autocomplete="url" placeholder="youtube.com/watch?v=…" required />
+            </div>
+            <p class="field-error" id="url-error" aria-live="polite"></p>
+          </div>
+
+          <div class="field-group">
+            <div class="label-row">
+              <label for="objective">What to Condense For</label>
+              <span id="objective-count">0 / 300</span>
+            </div>
+            <textarea id="objective" name="objective" rows="5" maxlength="300" placeholder="Extract the clearest practical advice on negotiating salary, evaluating trade-offs, and responding to counteroffers. Remove introductions, ads, repetition, and unrelated stories." required></textarea>
+            <p class="field-error" id="objective-error" aria-live="polite"></p>
+          </div>
+
+          <button class="primary-button" id="submit-button" type="submit">
+            <span class="button-label">Condense Video</span>
+            <span class="button-arrow" aria-hidden="true">&#8594;</span>
+          </button>
+        </form>
+
+        <div class="error-panel" id="error-panel" hidden role="alert">
+          <span class="error-icon" aria-hidden="true">!</span>
+          <div>
+            <strong>Something went wrong</strong>
+            <p id="error-message"></p>
+          </div>
+          <button id="retry-button" type="button">Retry</button>
+        </div>
+      </section>
+
+      <section class="progress-zone" id="progress-zone" hidden aria-live="polite" aria-label="Condensation progress">
+        <div class="progress-content" id="progress-content">
+          <div class="stage-row">
+            <span data-stage="0">Fetching</span>
+            <span data-stage="1">Analyzing</span>
+            <span data-stage="2">Condensing</span>
+            <span data-stage="3">Stitching</span>
+          </div>
+          <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="progress-bar"></div>
+          </div>
+          <div class="progress-caption">
+            <strong id="process-title"></strong>
+            <span id="process-time"></span>
+          </div>
+        </div>
+        <a class="view-button" id="view-button" href="result.html" hidden>
+          <span>View Condensed Video</span>
+          <span aria-hidden="true">&#8594;</span>
+        </a>
+      </section>
+    </main>
+
+    <script src="ambient.js?v=20260813-5"></script>
+    <script src="config.js?v=20260813-4"></script>
+    <script type="module" src="app.js?v=20260813-4"></script>
+  </body>
+</html>

@@ -1,0 +1,28 @@
+services:
+  server:
+    build:
+      context: .
+    ports:
+      - 8000:8000
+    environment:
+      VIDEO_CONDENSER_DATA_DIR: /app/runtime/jobs
+      MAX_CONCURRENT_JOBS: 1
+      MAX_PENDING_JOBS: 2
+      MAX_VIDEO_DURATION_SECONDS: 10800
+      MIN_FREE_SPACE_GB: 5
+      JOB_RETENTION_HOURS: 24
+      JOB_CLEANUP_INTERVAL_SECONDS: 900
+      FFMPEG_TIMEOUT_SECONDS: 3600
+      FRONTEND_ORIGINS: http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:5501,http://localhost:5501
+    volumes:
+      - video-results:/app/runtime/jobs
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8000/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  video-results:

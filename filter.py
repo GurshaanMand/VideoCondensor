@@ -10,14 +10,12 @@ duration-aware filtering while protecting high-value and bridge segments.
 # Imports and model
 # ============================================================
 
-from sentence_transformers import SentenceTransformer as st
 from sklearn.metrics.pairwise import cosine_similarity as cs
 import numpy as np
 import math
 import re
 
-
-MODEL = st("all-MiniLM-L6-v2")
+from embedding_model import getEmbeddingModel
 
 
 # ============================================================
@@ -146,7 +144,7 @@ def reasoningCueScore(text):
 # ============================================================
 
 def embedObj(obj):
-    objEmbedding = MODEL.encode([obj])
+    objEmbedding = getEmbeddingModel().encode([obj])
     return objEmbedding[0]
 
 

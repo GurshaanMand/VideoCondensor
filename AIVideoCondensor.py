@@ -1,22 +1,12 @@
-import re
 import math
-from youtube_transcript_api import YouTubeTranscriptApi as yt
-from sentence_transformers import SentenceTransformer as st
+from requests import RequestException, Session
+from youtube_transcript_api import YouTubeTranscriptApi as yt, YouTubeTranscriptApiException
 from sklearn.metrics.pairwise import cosine_similarity as cs
 
+from embedding_model import getEmbeddingModel
 from segment import Segment
-from filter import getInfo
 from stitch import stitchVideo
-
-
-def isValidYoutubeUrl(url: str) -> bool:
-    pattern = r"^https://www\.youtube\.com/watch\?v=[A-Za-z0-9_-]{11}(&.*)?$"
-    return re.fullmatch(pattern, url) is not None
-
-
-# Backward-compatible alias in case another file uses the old name.
-def is_valid_youtube_url(url: str) -> bool:
-    return isValidYoutubeUrl(url)
+from video_urls import extractYoutubeVideoId, isValidYoutubeUrl, is_valid_youtube_url
 
 
 def addSnippetToWindow(windows, windowIndex, start, end, duration, text):
@@ -49,30 +39,48 @@ def getTargetWindow(start, end, windowSize):
     return startWindow
 
 
-def segmentation(url: str, windowSize: int = 20):
-    videoId = url.split("v=")[-1]
+def fetchTranscript(url: str):
+    videoId = extractYoutubeVideoId(url)
+    if not videoId:
+        raise ValueError("Invalid YouTube URL.")
 
-    youtubeApi = yt()
-    youtubeTranscript = youtubeApi.fetch(videoId)
+    class TimeoutSession(Session):
+        def request(self, method, request_url, **kwargs):
+            kwargs.setdefault("timeout", (10, 30))
+            return super().request(method, request_url, **kwargs)
+
+    session = TimeoutSession()
+    try:
+        return yt(http_client=session).fetch(videoId)
+    except YouTubeTranscriptApiException as exc:
+        raise RuntimeError(
+            "This video does not have an accessible English transcript. "
+            "Choose a public video with captions and try again."
+        ) from exc
+    except RequestException as exc:
+        raise RuntimeError(
+            "The YouTube transcript service could not be reached. Please retry shortly."
+        ) from exc
+    finally:
+        session.close()
+
+
+def segmentation(url: str, windowSize: int = 20, transcript=None):
+    youtubeTranscript = transcript if transcript is not None else fetchTranscript(url)
 
     windows = {}
-    printedCount = 0
-
     for snippet in youtubeTranscript:
         start = round(float(snippet.start), 2)
         end = round(start + float(snippet.duration), 2)
         duration = snippet.duration
         text = snippet.text
 
-        if printedCount < 20:
-            print(start, " - ", duration, " - ", end, " :- ", text)
-            printedCount += 1
-
         targetWindow = getTargetWindow(start, end, windowSize)
         addSnippetToWindow(windows, targetWindow, start, end, duration, text)
 
     for segment in windows.values():
         segment.text = " ".join(segment.pieces)
+        segment.dur = max(0.0, segment.end - segment.start)
 
     segments = [windows[index] for index in sorted(windows.keys())]
     return segments
@@ -81,7 +89,7 @@ def segmentation(url: str, windowSize: int = 20):
 def embeddingSentence(segments):
     texts = [segment.text for segment in segments]
 
-    model = st("all-MiniLM-L6-v2")
+    model = getEmbeddingModel()
     embeddings = model.encode(texts)
 
     for index in range(len(segments)):
@@ -119,9 +127,6 @@ def cosineSimilarity(embeddingMatrix):
                 centroid.reshape(1, -1),
                 embeddingMatrix[index + 1].embedding.reshape(1, -1)
             )[0][0]
-        else:
-            print()
-
         if similarity > low:
             currentTopic.append(embeddingMatrix[index])
             currentTopic.append(embeddingMatrix[index + 1])
@@ -136,9 +141,6 @@ def cosineSimilarity(embeddingMatrix):
                 centroid.reshape(1, -1),
                 embeddingMatrix[index + 2].embedding.reshape(1, -1)
             )[0][0]
-        else:
-            print()
-
         if similarity > low:
             currentTopic.append(embeddingMatrix[index])
             currentTopic.append(embeddingMatrix[index + 1])
@@ -148,8 +150,6 @@ def cosineSimilarity(embeddingMatrix):
             terms += 1
             index += 2
             continue
-
-        print()
 
         topics.append(currentTopic)
         currentTopic = [embeddingMatrix[index]]
@@ -183,6 +183,95 @@ def printFilteredTopics(filteredTopics):
                 "reason": segment.filterReason,
             })
 
+def serializeTopics(topics):
+    serializedTopics = []
+
+    for topicIndex, topic in enumerate(topics):
+        serializedTopic = {
+            "topicIndex": topicIndex,
+            "segments": []
+        }
+
+        for seg in topic:
+            serializedTopic["segments"].append({
+                "start": seg.start,
+                "end": seg.end,
+                "duration": seg.dur,
+                "text": seg.text,
+                "score": seg.score,
+                "keep": seg.keep,
+                "reason": seg.filterReason,
+                "objectiveRelevance": seg.objRelevance,
+                "informativeness": seg.informativeness,
+                "novelty": seg.novelty,
+                "redundancy": seg.redundancy,
+                "coherence": seg.coherence,
+                "density": seg.density
+            })
+
+        serializedTopics.append(serializedTopic)
+
+    return serializedTopics
+
+def condenseVideo(
+    url,
+    obj,
+    source_path=None,
+    output_path=None,
+    progress_callback=None,
+    transcript=None,
+):
+    def report(progress, stage, message):
+        if progress_callback:
+            progress_callback(progress, stage, message)
+
+    if not isValidYoutubeUrl(url):
+        return {
+            "success": False,
+            "error": "Invalid URL."
+        }
+
+    report(30, "Reading transcript", "Fetching captions")
+    segments = segmentation(url, transcript=transcript)
+    if not segments:
+        raise ValueError("No transcript segments were found for this video.")
+
+    report(42, "Understanding the video", "Creating semantic embeddings")
+    segments = embeddingSentence(segments)
+    report(60, "Finding the useful moments", "Grouping related sections")
+    topics = cosineSimilarity(segments)
+    report(68, "Ranking the useful moments", "Scoring sections against your objective")
+    from filter import getInfo
+
+    filteredTopics = getInfo(topics, obj)
+
+    response = {
+        "success": True,
+        "topics": serializeTopics(filteredTopics)
+    }
+
+    if source_path and output_path:
+        report(72, "Building your focused cut", "Preparing selected sections")
+
+        def stitch_progress(current, total):
+            fraction = current / total if total else 0
+            report(
+                72 + round(fraction * 24),
+                "Building your focused cut",
+                f"Rendered section {current} of {total}"
+            )
+
+        statistics = stitchVideo(
+            filteredTopics,
+            source_path,
+            output_path,
+            progress_callback=stitch_progress
+        )
+        response["output_path"] = str(output_path)
+        response["statistics"] = statistics
+
+    report(98, "Finishing your video", "Finalizing the result")
+    return response
 
 def userInput():
     url = input("Enter the youtube video url: ").strip()
@@ -197,9 +286,10 @@ def userInput():
     segments = segmentation(url)
     embeddedSegments = embeddingSentence(segments)
     topics = cosineSimilarity(embeddedSegments)
+    from filter import getInfo
+
     filteredTopics = getInfo(topics, obj)
 
-    # stitchVideo(filteredTopics, "input.mp4", "output.mp4")
     printFilteredTopics(filteredTopics)
 
     return filteredTopics
@@ -228,4 +318,4 @@ def userInput():
 #         print("No overlaps found.")
 
 
-userInput()
+# userInput()
