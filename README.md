@@ -39,6 +39,34 @@ In one end-to-end test, the application condensed a 1 hour 44 minute podcast to 
 10. FFmpeg renders the selected ranges and joins them into a final MP4.
 11. The frontend displays the completed video and provides a download link.
 
+## Scoring and Filtering
+
+The analysis runs on the transcript only; video frames are never inspected.
+
+**Segmentation.** Caption snippets are bucketed into 20-second windows. A snippet that straddles a boundary goes to the window that holds more of it.
+
+**Embeddings.** Each segment's text is embedded with `all-MiniLM-L6-v2` (384 dimensions). The model is downloaded at image build time and loaded offline at runtime.
+
+**Topic grouping.** Segments are walked in order. A segment joins the current topic when its cosine similarity to the topic's running centroid is above 0.37. Before closing a topic, the grouper looks ahead up to two segments, so a short aside does not split one discussion into two topics.
+
+**Signals.** Every segment gets five scores between 0 and 1:
+
+| Signal | How it is computed |
+| --- | --- |
+| Objective relevance | Cosine similarity to the embedded objective, blended with its percentile rank within the video and keyword overlap with the objective |
+| Informativeness | Word count, vocabulary diversity, and whether the text contains specifics such as numbers or step/reason words |
+| Novelty | One minus the highest similarity to the previous six segments in the same topic |
+| Coherence | Similarity to the topic centroid |
+| Density | Words per second |
+
+**Final score.** A weighted sum (`0.58` relevance, `0.16` informativeness, `0.10` novelty, `0.10` coherence, `0.06` density), with penalties for off-objective, low-information, and redundant segments. Scores are then rescaled between the video's 10th and 90th percentiles, and segments with weak objective relevance are capped so rescaling cannot push them to the top.
+
+**Filtering.** Removal happens in three passes: clear rejects first, then the lowest-scoring segments until about 40% of the duration is gone, then a cleanup of very weak leftovers. No more than 60% is ever removed. High-value segments are protected, and so are decent neighbours within three seconds of them, which keeps the lead-in and follow-up to an important moment.
+
+**Rendering.** Kept ranges less than 0.35 seconds apart are merged. Each range is re-encoded with FFmpeg (`libx264`, AAC) and the clips are joined with the concat demuxer.
+
+The weights and thresholds were tuned by hand against a small number of videos. They are not learned and there is no labelled evaluation set.
+
 ## Architecture
 
 ```text
